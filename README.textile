@@ -22,6 +22,7 @@ h2. Links
 * "Wiki":https://github.com/m1ch1/mapkeeper/wiki
 
 h2. Build Info
+
 In order to configure the build, edit Makefile.config to point to the
 location of your copy of thrift.  If you ran thrift's "make install",
 the default (/usr/local) will likely work for you.  Otherwise, point
