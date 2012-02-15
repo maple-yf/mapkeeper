@@ -15,18 +15,13 @@ MapKeeper is a Thrift-based key-value store that supports various storage engine
 * "Berkeley DB Java Edition":http://www.oracle.com/technetwork/database/berkeleydb/overview/index-093405.html
 * "LevelDB":http://code.google.com/p/leveldb/
 
-You can run "YCSB":https://github.com/brianfrankcooper/YCSB/wiki against MapKeeper to benchmark different storage engines. 
-See "this page":https://github.com/m1ch1/mapkeeper/tree/master/ycsb for more details on how to run YCSB against MapKeeper. 
+You can run "YCSB":https://github.com/brianfrankcooper/YCSB/wiki against MapKeeper to benchmark different storage engines. See "this page":https://github.com/m1ch1/mapkeeper/tree/master/ycsb for more details on how to run YCSB against MapKeeper. 
 
 h2. Links
-* "Wiki":https://github.com/m1ch1/mapkeeper/wiki
+* "MapKeeper Homepage":https://github.com/m1ch1/mapkeeper/wiki
+* "Getting Started":https://github.com/m1ch1/mapkeeper/wiki/Getting-Started
 
 h2. Build Info
 
-In order to configure the build, edit Makefile.config to point to the
-location of your copy of thrift.  If you ran thrift's "make install",
-the default (/usr/local) will likely work for you.  Otherwise, point
-it at the top directory of the tarball after doing a "./configure ;
-make" in the thrift directory.
-
-Note that mapkeeper requires the Thrift C++ and Java bindings.
+In order to configure the build, edit Makefile.config to point to the location of your copy of thrift.  If you ran thrift's "make install", the default (/usr/local) will likely work for you.  Otherwise, point
+it at the top directory of the tarball after doing a "./configure ; make" in the thrift directory. Note that mapkeeper requires the Thrift C++ and Java bindings.
