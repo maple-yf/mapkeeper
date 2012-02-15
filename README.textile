@@ -1,3 +1,27 @@
+h1. MapKeeper
+
+h2. Contact Information
+
+* Mailing list: <a href="mailto:mapkeeper-users@googlegroups.com">mapkeeper-users@googlegroups.com</a>
+* Google group: "http://groups.google.com/group/mapkeeper-users":http://groups.google.com/group/mapkeeper-users
+
+h2. Introduction
+
+MapKeeper is a Thrift-based key-value store that supports various storage engines. Currently MapKeeper supports the following storage engines:
+
+* "MySQL":http://www.mysql.com/
+* "MySQL with HandlerSocket":http://yoshinorimatsunobu.blogspot.com/2010/10/using-mysql-as-nosql-story-for.html
+* "Berkeley DB":http://www.oracle.com/technetwork/database/berkeleydb/overview/index-085366.html
+* "Berkeley DB Java Edition":http://www.oracle.com/technetwork/database/berkeleydb/overview/index-093405.html
+* "LevelDB":http://code.google.com/p/leveldb/
+
+You can run "YCSB":https://github.com/brianfrankcooper/YCSB/wiki against MapKeeper to benchmark different storage engines. 
+See "this page":https://github.com/m1ch1/mapkeeper/tree/master/ycsb for more details on how to run YCSB against MapKeeper. 
+
+h2. Links
+* "Wiki":https://github.com/m1ch1/mapkeeper/wiki
+
+h2. Build Info
 In order to configure the build, edit Makefile.config to point to the
 location of your copy of thrift.  If you ran thrift's "make install",
 the default (/usr/local) will likely work for you.  Otherwise, point
