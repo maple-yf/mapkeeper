@@ -54,7 +54,7 @@ public:
         directory_iterator end_itr;
         for (directory_iterator itr(directoryName); itr != end_itr;itr++) {
             if (is_directory(itr->status())) {
-                std::string mapName = itr->path().filename();
+                std::string mapName = itr->path().filename().string();
                 leveldb::Status status = leveldb::DB::Open(options, itr->path().string(), &db);
                 assert(status.ok());
                 maps_.insert(mapName, db);
