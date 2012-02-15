@@ -2,7 +2,7 @@ include ../../Makefile.config
 
 CC=g++
 CFLAGS=-c -Wall -I $(THRIFT_DIR)/include/thrift -I $(THRIFT_DIR)/include
-LDFLAGS = -L $(THRIFT_DIR)/lib -lthrift
+LDFLAGS = -L$(THRIFT_DIR)/lib -lthrift
 SOURCES = mapkeeper_constants.cpp \
           MapKeeper.cpp \
           mapkeeper_types.cpp \
