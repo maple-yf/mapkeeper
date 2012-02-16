@@ -1,10 +1,9 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.yahoo.mapkeeper</groupId>
   <artifactId>mapkeeper</artifactId>
   <packaging>jar</packaging>
-  <version>1.0-SNAPSHOT</version>
+  <version>1.0</version>
   <name>mapkeeper</name>
   <url>http://maven.apache.org</url>
   <scm>
@@ -33,13 +32,13 @@
               <phase>generate-sources</phase>
               <configuration>
                 <tasks>
-                <mkdir dir="target/generated-sources/thrift"/>
+                <mkdir dir="target/generated-sources/thrift" />
                 <exec executable="thrift">
-                  <arg value="--gen"/>
-                  <arg value="java"/>
-                  <arg value="-o"/>
-                  <arg value="target/generated-sources/thrift"/>
-                  <arg value="${basedir}/../mapkeeper.thrift"/>
+                  <arg value="--gen" />
+                  <arg value="java" />
+                  <arg value="-o" />
+                  <arg value="target/generated-sources/thrift" />
+                  <arg value="${basedir}/../mapkeeper.thrift" />
                   </exec>
                 </tasks>
               </configuration>
