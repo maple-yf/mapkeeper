@@ -7,6 +7,9 @@
   <version>1.0-SNAPSHOT</version>
   <name>mapkeeper</name>
   <url>http://maven.apache.org</url>
+  <scm>
+    <developerConnection>scm:git:git@github.com:m1ch1/mapkeeper.git</developerConnection>
+  </scm>
   <dependencies>
     <dependency>
       <groupId>junit</groupId>
@@ -49,6 +52,7 @@
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>build-helper-maven-plugin</artifactId>
+        <version>1.7</version>
         <executions>
           <execution>
             <phase>generate-sources</phase>
