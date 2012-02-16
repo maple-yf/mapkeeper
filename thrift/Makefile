@@ -1,10 +1,10 @@
 include ../Makefile.config
 
 all:
-	$(THRIFT_DIR)/bin/thrift --gen cpp --gen java mapkeeper.thrift
+	$(THRIFT_DIR)/bin/thrift --gen cpp mapkeeper.thrift
 	make -C gen-cpp
-	#make -C gen-java
+	cd gen-java && mvn clean package
 
 clean:
 	make -C gen-cpp clean
-	#make -C gen-java clean
+	cd gen-java && mvn clean package
