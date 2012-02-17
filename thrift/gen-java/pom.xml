@@ -17,14 +17,14 @@
       <uniqueVersion>false</uniqueVersion>
       <id>releases</id>
       <name>Release Repository</name>
-      <url>file://${basedir}/../../../m1ch1-mvn-repo/releases</url>
+      <url>file:///homes/michim/gitdev/m1ch1-mvn-repo/releases</url>
       <layout>default</layout>
     </repository>
     <snapshotRepository>
       <uniqueVersion>true</uniqueVersion>
       <id>snapshots</id>
       <name>Snapshot Repository</name>
-      <url>file://${basedir}/../../../m1ch1-mvn-repo/snapshots</url>
+      <url>file:///homes/michim/gitdev/m1ch1-mvn-repo/snapshots</url>
       <layout>default</layout>
     </snapshotRepository>
   </distributionManagement>
