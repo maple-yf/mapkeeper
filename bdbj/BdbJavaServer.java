@@ -51,7 +51,7 @@ class BdbJavaServer implements MapKeeper.Iface {
     public BdbJavaServer(Properties properties)
     {
         logger.info(properties.toString());
-        String home = properties.getProperty("env_dir", "/home/y/var/dht_bdb_server/data");
+        String home = properties.getProperty("env_dir", "data");
         EnvironmentConfig envConfig = new EnvironmentConfig();
         envConfig.setAllowCreate(true);
         this.env = new Environment(new File(home), envConfig);
@@ -552,6 +552,4 @@ class BdbJavaServer implements MapKeeper.Iface {
             logger.error(x.toString() + " " + x.getMessage());
         }
     }
-
 }
-
