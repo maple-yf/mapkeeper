@@ -4,16 +4,19 @@
  *
  * http://leveldb.googlecode.com/svn/trunk/doc/index.html
  */
+#include <iostream>
 #include <cstdio>
 #include "MapKeeper.h"
 #include <leveldb/db.h>
 #include <leveldb/cache.h>
+#include <boost/program_options.hpp>
 #include <boost/ptr_container/ptr_map.hpp>
 #include <boost/thread/shared_mutex.hpp>
 #include <boost/filesystem.hpp>
 #include <sys/types.h>
 #include <dirent.h>
 #include <errno.h>
+#include <arpa/inet.h>
 
 #include <protocol/TBinaryProtocol.h>
 #include <server/TThreadedServer.h>
@@ -29,6 +32,7 @@ using namespace ::apache::thrift::concurrency;
 
 using boost::shared_ptr;
 using namespace boost::filesystem;
+namespace po = boost::program_options;
 
 using namespace mapkeeper;
 
@@ -37,16 +41,20 @@ int blindinsert;
 int blindupdate;
 class LevelDbServer: virtual public MapKeeperIf {
 public:
-    LevelDbServer(const std::string& directoryName) : 
-        directoryName_(directoryName) {
+    LevelDbServer(const std::string& directoryName,
+                  uint32_t writeBufferSizeMb, uint32_t blockCacheSizeMb) : 
+        directoryName_(directoryName),
+        writeBufferSizeMb_(writeBufferSizeMb),
+        blockCacheSizeMb_(blockCacheSizeMb) {
+        cache_ = leveldb::NewLRUCache(blockCacheSizeMb_ * 1024 * 1024);
 
         // open all the existing databases
         leveldb::DB* db;
         leveldb::Options options;
         options.create_if_missing = false;
         options.error_if_exists = false;
-        options.write_buffer_size = 500 * 1048576; // 500MB write buffer
-        options.block_cache = leveldb::NewLRUCache(10000L * 1048576L);  // 1.5GB cache
+        options.write_buffer_size = writeBufferSizeMb_ * 1024 * 1024;
+        options.block_cache = cache_;
         options.compression = leveldb::kNoCompression;
 
         boost::unique_lock< boost::shared_mutex > writeLock(mutex_);;
@@ -71,8 +79,8 @@ public:
         leveldb::Options options;
         options.create_if_missing = true;
         options.error_if_exists = true;
-        options.write_buffer_size = 500 * 1048576; // 500MB write buffer
-        options.block_cache = leveldb::NewLRUCache(1500 * 1048576);  // 1.5GB cache
+        options.write_buffer_size = writeBufferSizeMb_ * 1024 * 1024;
+        options.block_cache = cache_;
         leveldb::Status status = leveldb::DB::Open(options, directoryName_ + "/" + mapName, &db);
         if (!status.ok()) {
             // TODO check return code
@@ -241,17 +249,42 @@ public:
 
 private:
     std::string directoryName_; // directory to store db files.
+    uint32_t writeBufferSizeMb_; 
+    uint32_t blockCacheSizeMb_; 
+    leveldb::Cache* cache_;
     boost::ptr_map<std::string, leveldb::DB> maps_;
     boost::shared_mutex mutex_; // protect map_
 };
 
 int main(int argc, char **argv) {
-    if(argc != 4) { printf("Usage: %s <sync:0 or 1> <blindinsert:0 or 1> <blindupdate:0 or 1>\n", argv[0]); }
-    syncmode    = atoi(argv[1]);
-    blindinsert = atoi(argv[2]);
-    blindupdate = atoi(argv[3]);
-    int port = 9090;
-    shared_ptr<LevelDbServer> handler(new LevelDbServer("data"));
+    int port;
+    int writeBufferSizeMb;
+    int blockCacheSizeMb;
+    std::string dir;
+    po::variables_map vm;
+    po::options_description config("");
+    config.add_options()
+        ("help,h", "produce help message")
+        ("sync,s", "synchronous writes")
+        ("blindinsert,i", "skip record existence check for inserts")
+        ("blindupdate,u",  "skip record existence check for updates")
+        ("port,p", po::value<int>(&port)->default_value(9090), "port to listen to")
+        ("datadir,d", po::value<std::string>(&dir)->default_value("data"), "data directory")
+        ("write-buffer-mb,w", po::value<int>(&writeBufferSizeMb)->default_value(1024), "LevelDB write buffer size in MB")
+        ("block-cache-mb,b", po::value<int>(&blockCacheSizeMb)->default_value(1024), "LevelDB block cache size in MB")
+        ;
+    po::options_description cmdline_options;
+    cmdline_options.add(config);
+    store(po::command_line_parser(argc, argv).options(cmdline_options).run(), vm);
+    notify(vm);
+    if (vm.count("help")) {
+        std::cout << config << std::endl; 
+        exit(0);
+    }
+    syncmode = vm.count("sync");
+    blindinsert = vm.count("blindinsert");
+    blindupdate = vm.count("blindupdate");
+    shared_ptr<LevelDbServer> handler(new LevelDbServer(dir, writeBufferSizeMb, blockCacheSizeMb));
     shared_ptr<TProcessor> processor(new MapKeeperProcessor(handler));
     shared_ptr<TServerTransport> serverTransport(new TServerSocket(port));
     shared_ptr<TTransportFactory> transportFactory(new TFramedTransportFactory());

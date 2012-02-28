@@ -2,16 +2,13 @@ include ../Makefile.config
 
 EXECUTABLE = mapkeeper_leveldb
 
-all : thrift
+all :
 	g++ -Wall -o $(EXECUTABLE) *cpp -I $(THRIFT_DIR)/include/thrift -I $(THRIFT_DIR)/include \
-        -lboost_thread -lboost_filesystem -lthrift -lleveldb -I ../thrift/gen-cpp \
+        -lboost_thread -lboost_filesystem -lboost_program_options -lthrift -lleveldb -I ../thrift/gen-cpp \
 	-L $(THRIFT_DIR)/lib \
         -L ../thrift/gen-cpp -lmapkeeper \
            -Wl,-rpath,\$$ORIGIN/../thrift/gen-cpp			\
            -Wl,-rpath,$(THRIFT_DIR)/lib
-
-thrift:
-	make -C ../thrift
 
 run:
 	./$(EXECUTABLE) 1 0 0
