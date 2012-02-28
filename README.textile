@@ -23,4 +23,18 @@ h2. Links
 
 h2. Build Info
 
-In order to configure the build, edit Makefile.config to point to the location of your copy of thrift.  If you ran thrift's "make install", the default (/usr/local) will likely work for you.  Otherwise, point it at the top directory of the tarball after doing a "./configure ; make" in the thrift directory. Note that mapkeeper requires the Thrift C++ and Java bindings.
+In order to configure the build, edit Makefile.config to point to the location of your copy of thrift.  If you ran thrift's "make install", the default (/usr/local) will likely work for you.  Otherwise, point it at the top directory of the tarball after doing a "./configure ; make" in the thrift directory. 
+
+Mapkeeper uses several 3rd party open source libraries and tools.
+
+The remainder of this file summarizes the tools used, their purpose, and the licenses under which they're released.
+
+MapKeeper requires the Thrift C++ and Java bindings, and the C++ Boost framework:
+
+Thrift is a serialization and RPC framework:
+http://thrift.apache.org/
+Apache 2.0 license: http://svn.apache.org/viewvc/thrift/trunk/LICENSE?view=markup
+
+Boost is a collection of utility libraries for C++:
+http://www.boost.org/
+Boost Software License: http://www.boost.org/users/license.html
