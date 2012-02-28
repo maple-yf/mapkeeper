@@ -21,7 +21,7 @@ To start the server, run:
 
     make run
 
-This will start the server with 1gb Java heap. If you like to change the heap
+This will start the server with 1GB Java heap. If you like to change the heap
 size, you can pass `heapsize` parameter to `make`. For example, to use 4GB for
 Java heap, do:
 
