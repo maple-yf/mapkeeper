@@ -7,4 +7,4 @@ all:
 
 clean:
 	make -C gen-cpp clean
-	cd gen-java && mvn clean package
+	cd gen-java && mvn clean
