@@ -18,8 +18,8 @@ details on how to run YCSB against MapKeeper.
 
 ## Links
 
-* "MapKeeper Homepage":https://github.com/m1ch1/mapkeeper/wiki
-* "Getting Started":https://github.com/m1ch1/mapkeeper/wiki/Getting-Started
+* [MapKeeper Homepage](https://github.com/m1ch1/mapkeeper/wiki)
+* [Getting Started](https://github.com/m1ch1/mapkeeper/wiki/Getting-Started)
 
 ## Build Info
 
