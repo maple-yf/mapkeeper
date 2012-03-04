@@ -11,7 +11,7 @@ all :
            -Wl,-rpath,$(THRIFT_DIR)/lib
 
 run:
-	./$(EXECUTABLE) 1 0 0
+	./$(EXECUTABLE) --sync
 
 clean :
 	- rm -rf $(THRIFT_SRC) $(EXECUTABLE) *.o 
