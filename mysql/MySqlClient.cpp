@@ -47,7 +47,13 @@ MySqlClient(const std::string& host, uint32_t port) :
     assert(0 == mysql_real_query(&mysql_, query.c_str(), query.length()));
 }
 
-MySqlClient::ResponseCode MySqlClient::
+MySqlClient::
+~MySqlClient()
+{
+    mysql_close(&mysql_);
+}
+
+ResponseCode::type MySqlClient::
 createTable(const std::string& tableName)
 {
     std::string query = "create table " + escapeString(tableName) + 
@@ -56,16 +62,16 @@ createTable(const std::string& tableName)
     if (result != 0) {
         uint32_t error = mysql_errno(&mysql_);
         if (error == ER_TABLE_EXISTS_ERROR) {
-            return TableExists;
+            return ResponseCode::MapExists;
         } else {
             fprintf(stderr, "%d %s\n", error, mysql_error(&mysql_));
-            return Error;
+            return ResponseCode::Error;
         }
     }
-    return Success;
+    return ResponseCode::Success;
 }
 
-MySqlClient::ResponseCode MySqlClient::
+ResponseCode::type MySqlClient::
 dropTable(const std::string& tableName)
 {
     std::string query = "drop table " + escapeString(tableName);
@@ -73,13 +79,13 @@ dropTable(const std::string& tableName)
     if (result != 0) {
         uint32_t error = mysql_errno(&mysql_);
         if (error == ER_BAD_TABLE_ERROR) {
-            return TableNotFound;
+            return ResponseCode::MapNotFound;
         } else {
             fprintf(stderr, "%d %s\n", error, mysql_error(&mysql_));
-            return Error;
+            return ResponseCode::Error;
         }
     }
-    return Success;
+    return ResponseCode::Success;
 }
 
 void MySqlClient::
@@ -102,7 +108,7 @@ listTables(vector<string>& tables) {
     mysql_free_result(res);
 }
 
-MySqlClient::ResponseCode MySqlClient::
+ResponseCode::type MySqlClient::
 insert(const std::string& tableName, const std::string& key, const std::string& value)
 {
     std::string query = "insert " + escapeString(tableName) + " values('" + 
@@ -112,18 +118,18 @@ insert(const std::string& tableName, const std::string& key, const std::string& 
     if (result != 0) {
         uint32_t error = mysql_errno(&mysql_);
         if (error == ER_NO_SUCH_TABLE) {
-            return TableNotFound;
+            return ResponseCode::MapNotFound;
         } else if (error == ER_DUP_ENTRY) {
-            return RecordExists;
+            return ResponseCode::RecordExists;
         } else {
             fprintf(stderr, "%d %s\n", error, mysql_error(&mysql_));
-            return Error;
+            return ResponseCode::Error;
         }
     }
-    return Success;
+    return ResponseCode::Success;
 }
 
-MySqlClient::ResponseCode MySqlClient::
+ResponseCode::type MySqlClient::
 update(const std::string& tableName, const std::string& key, const std::string& value)
 {
     std::string query = "update " + escapeString(tableName) + " set record_value = '" + 
@@ -132,23 +138,23 @@ update(const std::string& tableName, const std::string& key, const std::string& 
     if (result != 0) {
         uint32_t error = mysql_errno(&mysql_);
         if (error == ER_NO_SUCH_TABLE) {
-            return TableNotFound;
+            return ResponseCode::MapNotFound;
         } else {
             fprintf(stderr, "%d %s\n", error, mysql_error(&mysql_));
-            return Error;
+            return ResponseCode::Error;
         }
     }
     uint64_t numRows = mysql_affected_rows(&mysql_);
     if (numRows == 0) {
-        return RecordNotFound;
+        return ResponseCode::RecordNotFound;
     } else if (numRows != 1) {
         fprintf(stderr, "update affected %ld rows\n", numRows);
-        return Error;
+        return ResponseCode::Error;
     }
-    return Success;
+    return ResponseCode::Success;
 }
 
-MySqlClient::ResponseCode MySqlClient::
+ResponseCode::type MySqlClient::
 get(const std::string& tableName, const std::string& key, std::string& value)
 {
     std::string query = "select record_value from " + escapeString(tableName) + 
@@ -157,31 +163,31 @@ get(const std::string& tableName, const std::string& key, std::string& value)
     if (result != 0) {
         uint32_t error = mysql_errno(&mysql_);
         if (error == ER_NO_SUCH_TABLE) {
-            return TableNotFound;
+            return ResponseCode::MapNotFound;
         } else {
             fprintf(stderr, "%d %s\n", error, mysql_error(&mysql_));
-            return Error;
+            return ResponseCode::Error;
         }
     }
     MYSQL_RES* res = mysql_store_result(&mysql_);
     uint32_t numRows = mysql_num_rows(res);
     if (numRows == 0) {
         mysql_free_result(res);
-        return RecordNotFound;
+        return ResponseCode::RecordNotFound;
     } else if (numRows != 1) {
         fprintf(stderr, "select returned %d rows.\n", numRows);
         mysql_free_result(res);
-        return Error;
+        return ResponseCode::Error;
     }
     MYSQL_ROW row = mysql_fetch_row(res);
     uint64_t* lengths = mysql_fetch_lengths(res);
     assert(row);
     value = std::string(row[0], lengths[0]);
     mysql_free_result(res);
-    return Success;
+    return ResponseCode::Success;
 }
 
-MySqlClient::ResponseCode MySqlClient::
+ResponseCode::type MySqlClient::
 remove(const std::string& tableName, const std::string& key)
 {
     std::string query = "delete from " + escapeString(tableName) + 
@@ -190,20 +196,20 @@ remove(const std::string& tableName, const std::string& key)
     if (result != 0) {
         uint32_t error = mysql_errno(&mysql_);
         if (error == ER_NO_SUCH_TABLE) {
-            return TableNotFound;
+            return ResponseCode::MapNotFound;
         } else {
             fprintf(stderr, "%d %s\n", error, mysql_error(&mysql_));
-            return Error;
+            return ResponseCode::Error;
         }
     }
     uint64_t numRows = mysql_affected_rows(&mysql_);
     if (numRows == 0) {
-        return RecordNotFound;
+        return ResponseCode::RecordNotFound;
     } else if (numRows != 1) {
         fprintf(stderr, "update affected %ld rows\n", numRows);
-        return Error;
+        return ResponseCode::Error;
     }
-    return Success;
+    return ResponseCode::Success;
 }
 
 void MySqlClient::

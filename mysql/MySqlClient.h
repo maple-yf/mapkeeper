@@ -20,29 +20,22 @@
 #include <vector>
 #include <mysql.h>
 #include "MapKeeper.h"
+#include "mapkeeper_types.h"
 
 using namespace std;
+using namespace mapkeeper;
 
 class MySqlClient {
 public:
-    enum ResponseCode {
-        Success,
-        Error,
-        TableExists,
-        TableNotFound,
-        RecordExists,
-        RecordNotFound,
-        ScanEnded,
-    };
-
     MySqlClient(const std::string& host, uint32_t port);
-    ResponseCode createTable(const std::string& tableName);
-    ResponseCode dropTable(const std::string& tableName);
+    ~MySqlClient();
+    ResponseCode::type createTable(const std::string& tableName);
+    ResponseCode::type dropTable(const std::string& tableName);
     void listTables(vector<string>& tables);
-    ResponseCode insert(const std::string& tableName, const std::string& key, const std::string& value);
-    ResponseCode update(const std::string& tableName, const std::string& key, const std::string& value);
-    ResponseCode get(const std::string& tableName, const std::string& key, std::string& value);
-    ResponseCode remove(const std::string& tableName, const std::string& key);
+    ResponseCode::type insert(const std::string& tableName, const std::string& key, const std::string& value);
+    ResponseCode::type update(const std::string& tableName, const std::string& key, const std::string& value);
+    ResponseCode::type get(const std::string& tableName, const std::string& key, std::string& value);
+    ResponseCode::type remove(const std::string& tableName, const std::string& key);
     void scan (mapkeeper::RecordListResponse& _return, const std::string& mapName, const mapkeeper::ScanOrder::type order,
             const std::string& startKey, const bool startKeyIncluded,
             const std::string& endKey, const bool endKeyIncluded,

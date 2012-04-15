@@ -18,6 +18,8 @@
  * This is a implementation of the mapkeeper interface that uses 
  * mysql.
  */
+#include <mysql.h>
+#include <mysqld_error.h>
 #include <arpa/inet.h>
 #include <cstdio>
 #include "MapKeeper.h"
@@ -53,27 +55,16 @@ public:
 
     ResponseCode::type addMap(const std::string& mapName) {
         initMySqlClient();
-        MySqlClient::ResponseCode rc = mysql_->createTable(mapName);
-        if (rc == MySqlClient::TableExists) {
-            return ResponseCode::MapExists;
-        } else if (rc != MySqlClient::Success) {
-            return ResponseCode::Error;
-        }
-        return ResponseCode::Success;
+        return mysql_->createTable(mapName);
     }
 
     ResponseCode::type dropMap(const std::string& mapName) {
         initMySqlClient();
-        MySqlClient::ResponseCode rc = mysql_->dropTable(mapName);
-        if (rc == MySqlClient::TableNotFound) {
-            return ResponseCode::MapNotFound;
-        } else if (rc != MySqlClient::Success) {
-            return ResponseCode::Error;
-        }
-        return ResponseCode::Success;
+        return mysql_->dropTable(mapName);
     }
 
     void listMaps(StringListResponse& _return) {
+        initMySqlClient();
         mysql_->listTables(_return.values);
         _return.responseCode = ResponseCode::Success;
     }
@@ -88,18 +79,7 @@ public:
 
     void get(BinaryResponse& _return, const std::string& mapName, const std::string& key) {
         initMySqlClient();
-        MySqlClient::ResponseCode rc = mysql_->get(mapName, key, _return.value);
-        if (rc == MySqlClient::TableNotFound) {
-            _return.responseCode = ResponseCode::MapNotFound;
-            return;
-        } else if (rc == MySqlClient::RecordNotFound) {
-            _return.responseCode = ResponseCode::RecordNotFound;
-            return;
-        } else if (rc != MySqlClient::Success) {
-            _return.responseCode = ResponseCode::Error;
-            return;
-        }
-        _return.responseCode = ResponseCode::Success;
+        _return.responseCode = mysql_->get(mapName, key, _return.value);
     }
 
     ResponseCode::type put(const std::string& mapName, const std::string& key, const std::string& value) {
@@ -108,41 +88,17 @@ public:
 
     ResponseCode::type insert(const std::string& mapName, const std::string& key, const std::string& value) {
         initMySqlClient();
-        MySqlClient::ResponseCode rc = mysql_->insert(mapName, key, value);
-        if (rc == MySqlClient::TableNotFound) {
-            return ResponseCode::MapNotFound;
-        } else if (rc == MySqlClient::RecordExists) {
-            return ResponseCode::RecordExists;
-        } else if (rc != MySqlClient::Success) {
-            return ResponseCode::Error;
-        }
-        return ResponseCode::Success;
+        return mysql_->insert(mapName, key, value);
     }
 
     ResponseCode::type update(const std::string& mapName, const std::string& key, const std::string& value) {
         initMySqlClient();
-        MySqlClient::ResponseCode rc = mysql_->update(mapName, key, value);
-        if (rc == MySqlClient::TableNotFound) {
-            return ResponseCode::MapNotFound;
-        } else if (rc == MySqlClient::RecordNotFound) {
-            return ResponseCode::RecordNotFound;
-        } else if (rc != MySqlClient::Success) {
-            return ResponseCode::Error;
-        }
-        return ResponseCode::Success;
+        return mysql_->update(mapName, key, value);
     }
 
     ResponseCode::type remove(const std::string& mapName, const std::string& key) {
         initMySqlClient();
-        MySqlClient::ResponseCode rc = mysql_->remove(mapName, key);
-        if (rc == MySqlClient::TableNotFound) {
-            return ResponseCode::MapNotFound;
-        } else if (rc == MySqlClient::RecordNotFound) {
-            return ResponseCode::RecordNotFound;
-        } else if (rc != MySqlClient::Success) {
-            return ResponseCode::Error;
-        }
-        return ResponseCode::Success;
+        return mysql_->remove(mapName, key);
     }
 
 private:
@@ -164,7 +120,7 @@ int main(int argc, char **argv) {
     shared_ptr<TServerTransport> serverTransport(new TServerSocket(port));
     shared_ptr<TTransportFactory> transportFactory(new TFramedTransportFactory());
     shared_ptr<TProtocolFactory> protocolFactory(new TBinaryProtocolFactory());
-    TThreadedServer server (processor, serverTransport, transportFactory, protocolFactory);
+    TThreadedServer server(processor, serverTransport, transportFactory, protocolFactory);
     server.serve();
     return 0;
 }
