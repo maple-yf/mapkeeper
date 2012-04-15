@@ -16,9 +16,11 @@
 
 /**
  * This is a stub implementation of the mapkeeper interface that uses 
- * std::map. Data is not persisted. The server is not thread-safe.
+ * std::map. Data is not persisted.
  */
-#include <cstdio>
+#include <map>
+#include <string>
+#include <arpa/inet.h>
 #include "MapKeeper.h"
 
 #include <boost/thread/shared_mutex.hpp>
@@ -27,130 +29,199 @@
 #include <transport/TServerSocket.h>
 #include <transport/TBufferTransports.h>
 
-using namespace ::apache::thrift;
-using namespace ::apache::thrift::protocol;
+using namespace std;
+using namespace mapkeeper;
 using namespace ::apache::thrift::transport;
 using namespace ::apache::thrift::server;
-using namespace ::apache::thrift::concurrency;
 
 using boost::shared_ptr;
 
-using namespace mapkeeper;
-
 class StlMapServer: virtual public MapKeeperIf {
 public:
-    StlMapServer() {
-    }
-
     ResponseCode::type ping() {
         return ResponseCode::Success;
     }
 
-    ResponseCode::type addMap(const std::string& mapName) {
+    ResponseCode::type addMap(const string& mapName) {
         boost::unique_lock< boost::shared_mutex > writeLock(mutex_);;
-        itr_ = maps_.find(mapName);
-        if (itr_ != maps_.end()) {
+        map<string, map<string, string> >::iterator itr = maps_.find(mapName);
+        if (itr != maps_.end()) {
             return ResponseCode::MapExists;
         }
-        std::map<std::string, std::string> newMap;
-        std::pair<std::string, std::map<std::string, std::string> > entry(mapName, newMap);
+        map<string, string> newMap;
+        pair<string, map<string, string> > entry(mapName, newMap);
         maps_.insert(entry);
         return ResponseCode::Success;
     }
 
-    ResponseCode::type dropMap(const std::string& mapName) {
+    ResponseCode::type dropMap(const string& mapName) {
         boost::unique_lock< boost::shared_mutex > writeLock(mutex_);;
-        itr_ = maps_.find(mapName);
-        if (itr_ == maps_.end()) {
+        map<string, map<string, string> >::iterator itr = maps_.find(mapName);
+        if (itr == maps_.end()) {
             return ResponseCode::MapNotFound;
         }
-        maps_.erase(itr_);
+        maps_.erase(itr);
         return ResponseCode::Success;
     }
 
     void listMaps(StringListResponse& _return) {
         boost::unique_lock< boost::shared_mutex > writeLock(mutex_);;
-        for (itr_ = maps_.begin(); itr_ != maps_.end(); itr_++) {
-            _return.values.push_back(itr_->first);
+        map<string, map<string, string> >::iterator itr;
+        for (itr = maps_.begin(); itr != maps_.end(); itr++) {
+            _return.values.push_back(itr->first);
         }
         _return.responseCode = ResponseCode::Success;
     }
 
-    void scan(RecordListResponse& _return, const std::string& mapName, const ScanOrder::type order, const std::string& startKey, const bool startKeyIncluded, const std::string& endKey, const bool endKeyIncluded, const int32_t maxRecords, const int32_t maxBytes) {
+    void scan(RecordListResponse& _return, const string& mapName, const ScanOrder::type order,
+              const string& startKey, const bool startKeyIncluded,
+              const string& endKey, const bool endKeyIncluded,
+              const int32_t maxRecords, const int32_t maxBytes) {
         boost::unique_lock< boost::shared_mutex > writeLock(mutex_);;
-    }
-
-    void get(BinaryResponse& _return, const std::string& mapName, const std::string& key) {
-        boost::unique_lock< boost::shared_mutex > writeLock(mutex_);;
-        itr_ = maps_.find(mapName);
-        if (itr_ == maps_.end()) {
+        map<string, map<string, string> >::iterator itr = maps_.find(mapName);
+        if (itr == maps_.end()) {
             _return.responseCode = ResponseCode::MapNotFound;
             return;
         }
-        recordIterator_ = itr_->second.find(key);
-        if (recordIterator_ == itr_->second.end()) {
+        if (order == ScanOrder::Ascending) {
+          scanAscending(_return, itr->second, startKey, startKeyIncluded, endKey, endKeyIncluded, maxRecords, maxBytes);
+        } else {
+          scanDescending(_return, itr->second, startKey, startKeyIncluded, endKey, endKeyIncluded, maxRecords, maxBytes);
+        }
+    }
+
+    void scanAscending(RecordListResponse& _return, const map<string, string>& mymap,
+              const string& startKey, const bool startKeyIncluded,
+              const string& endKey, const bool endKeyIncluded,
+              const int32_t maxRecords, const int32_t maxBytes) {
+        map<string, string>::const_iterator itr = startKeyIncluded ? 
+            mymap.lower_bound(startKey):
+            mymap.upper_bound(startKey);
+        int numBytes = 0;
+        while (itr != mymap.end()) {
+            if (!endKey.empty()) {
+                if (endKeyIncluded && endKey < itr->first) {
+                  break;
+                }
+                if (!endKeyIncluded && endKey <= itr->first) {
+                  break;
+                }
+            }
+            Record record;
+            record.key = itr->first;
+            record.value = itr->second;
+            numBytes += record.key.size() + record.value.size();
+            _return.records.push_back(record);
+            if (_return.records.size() >= (uint32_t)maxRecords || numBytes >= maxBytes) {
+                _return.responseCode = ResponseCode::Success;
+                return;
+            }
+            itr++;
+        }
+        _return.responseCode = ResponseCode::ScanEnded;
+    }
+ 
+    void scanDescending(RecordListResponse& _return, const map<string, string>& mymap,
+              const string& startKey, const bool startKeyIncluded,
+              const string& endKey, const bool endKeyIncluded,
+              const int32_t maxRecords, const int32_t maxBytes) {
+        map<string, string>::const_iterator itr;
+        if (endKey.empty()) {
+            itr = mymap.end();
+        } else {
+            itr = endKeyIncluded ? mymap.upper_bound(endKey) : mymap.lower_bound(endKey);
+        }
+        int numBytes = 0;
+        while (itr != mymap.begin()) {
+            itr--;
+            if (startKeyIncluded && startKey > itr->first) {
+                break;
+            }
+            if (!startKeyIncluded && startKey >= itr->first) {
+                break;
+            }
+            Record record;
+            record.key = itr->first;
+            record.value = itr->second;
+            numBytes += record.key.size() + record.value.size();
+            _return.records.push_back(record);
+            if (_return.records.size() >= (uint32_t)maxRecords || numBytes >= maxBytes) {
+                _return.responseCode = ResponseCode::Success;
+                return;
+            }
+        }
+        _return.responseCode = ResponseCode::ScanEnded;
+    }
+ 
+    void get(BinaryResponse& _return, const string& mapName, const string& key) {
+        boost::unique_lock< boost::shared_mutex > writeLock(mutex_);;
+        map<string, map<string, string> >::iterator itr = maps_.find(mapName);
+        if (itr == maps_.end()) {
+            _return.responseCode = ResponseCode::MapNotFound;
+            return;
+        }
+        map<string, string>::iterator recordIterator = itr->second.find(key);
+        if (recordIterator == itr->second.end()) {
             _return.responseCode = ResponseCode::RecordNotFound;
             return;
         }
         _return.responseCode = ResponseCode::Success;
-        _return.value = recordIterator_->second;
+        _return.value = recordIterator->second;
     }
 
-    ResponseCode::type put(const std::string& mapName, const std::string& key, const std::string& value) {
+    ResponseCode::type put(const string& mapName, const string& key, const string& value) {
         boost::unique_lock< boost::shared_mutex > writeLock(mutex_);;
-        itr_ = maps_.find(mapName);
-        if (itr_ == maps_.end()) {
+        map<string, map<string, string> >::iterator itr = maps_.find(mapName);
+        if (itr == maps_.end()) {
             return ResponseCode::MapNotFound;
         }
-        itr_->second[key] = value;
+        itr->second[key] = value;
         return ResponseCode::Success;
     }
 
-    ResponseCode::type insert(const std::string& mapName, const std::string& key, const std::string& value) {
+    ResponseCode::type insert(const string& mapName, const string& key, const string& value) {
         boost::unique_lock< boost::shared_mutex > writeLock(mutex_);;
-        itr_ = maps_.find(mapName);
-        if (itr_ == maps_.end()) {
+        map<string, map<string, string> >::iterator itr = maps_.find(mapName);
+        if (itr == maps_.end()) {
             return ResponseCode::MapNotFound;
         }
-        if (itr_->second.find(key) != itr_->second.end()) {
+        if (itr->second.find(key) != itr->second.end()) {
             return ResponseCode::RecordExists;
         }
-        itr_->second.insert(std::pair<std::string, std::string>(key, value));
+        itr->second.insert(pair<string, string>(key, value));
         return ResponseCode::Success;
     }
 
-    ResponseCode::type update(const std::string& mapName, const std::string& key, const std::string& value) {
+    ResponseCode::type update(const string& mapName, const string& key, const string& value) {
         boost::unique_lock< boost::shared_mutex > writeLock(mutex_);;
-        itr_ = maps_.find(mapName);
-        if (itr_ == maps_.end()) {
+        map<string, map<string, string> >::iterator itr = maps_.find(mapName);
+        if (itr == maps_.end()) {
             return ResponseCode::MapNotFound;
         }
-        if (itr_->second.find(key) == itr_->second.end()) {
+        if (itr->second.find(key) == itr->second.end()) {
             return ResponseCode::RecordNotFound;
         }
-        itr_->second[key] = value;
+        itr->second[key] = value;
         return ResponseCode::Success;
     }
 
-    ResponseCode::type remove(const std::string& mapName, const std::string& key) {
+    ResponseCode::type remove(const string& mapName, const string& key) {
         boost::unique_lock< boost::shared_mutex > writeLock(mutex_);;
-        itr_ = maps_.find(mapName);
-        if (itr_ == maps_.end()) {
+        map<string, map<string, string> >::iterator itr = maps_.find(mapName);
+        if (itr == maps_.end()) {
             return ResponseCode::MapNotFound;
         }
-        recordIterator_ = itr_->second.find(key);
-        if (recordIterator_  == itr_->second.end()) {
+        map<string, string>::iterator recordIterator = itr->second.find(key);
+        if (recordIterator  == itr->second.end()) {
             return ResponseCode::RecordNotFound;
         }
-        itr_->second.erase(recordIterator_);
+        itr->second.erase(recordIterator);
         return ResponseCode::Success;
     }
 
 private:
-    std::map<std::string, std::map<std::string, std::string> > maps_;
+    map<string, map<string, string> > maps_;
     boost::shared_mutex mutex_; // protect map_
-    std::map<std::string, std::map<std::string, std::string> >::iterator itr_;
-    std::map<std::string, std::string>::iterator recordIterator_;
 };
 
 int main(int argc, char **argv) {
