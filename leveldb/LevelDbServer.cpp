@@ -101,7 +101,7 @@ public:
         if (!status.ok()) {
             // TODO check return code
             printf("status: %s\n", status.ToString().c_str());
-            return ResponseCode::Error;
+            return ResponseCode::MapExists;
         }
         std::string mapName_ = mapName;
         boost::unique_lock< boost::shared_mutex > writeLock(mutex_);;
@@ -118,21 +118,16 @@ public:
             return ResponseCode::MapNotFound;
         }
         maps_.erase(itr);
+        DestroyDB(directoryName_ + "/" + mapName, leveldb::Options());
         return ResponseCode::Success;
     }
 
     void listMaps(StringListResponse& _return) {
-        DIR *dp;
-        struct dirent *dirp;
-        if((dp  = opendir(directoryName_.c_str())) == NULL) {
-            _return.responseCode = ResponseCode::Success;
-            return;
+        boost::unique_lock< boost::shared_mutex > writeLock(mutex_);;
+        boost::ptr_map<std::string, leveldb::DB>::iterator itr;
+        for (itr = maps_.begin(); itr != maps_.end(); itr++) {
+            _return.values.push_back(itr->first);
         }
-
-        while ((dirp = readdir(dp)) != NULL) {
-            _return.values.push_back(std::string(dirp->d_name));
-        }
-        closedir(dp);
         _return.responseCode = ResponseCode::Success;
     }
 
@@ -140,20 +135,87 @@ public:
               const std::string& startKey, const bool startKeyIncluded, 
               const std::string& endKey, const bool endKeyIncluded,
               const int32_t maxRecords, const int32_t maxBytes) {
+        boost::shared_lock< boost::shared_mutex> readLock(mutex_);;
+        boost::ptr_map<std::string, leveldb::DB>::iterator itr = maps_.find(mapName);
+        if (itr == maps_.end()) {
+            _return.responseCode = ResponseCode::Success;
+            return;
+        }
+        if (order == ScanOrder::Ascending) {
+            scanAscending(_return, itr->second, startKey, startKeyIncluded, endKey, endKeyIncluded, maxRecords, maxBytes);
+        } else {
+            scanDescending(_return, itr->second, startKey, startKeyIncluded, endKey, endKeyIncluded, maxRecords, maxBytes);
+        }
     }
 
-    void scanAscending(RecordListResponse& _return, std::map<std::string, std::string>& map,
+    void scanAscending(RecordListResponse& _return, leveldb::DB* db, 
               const std::string& startKey, const bool startKeyIncluded, 
               const std::string& endKey, const bool endKeyIncluded,
               const int32_t maxRecords, const int32_t maxBytes) {
         _return.responseCode = ResponseCode::ScanEnded;
+        int numBytes = 0;
+        leveldb::Iterator* itr = db->NewIterator(leveldb::ReadOptions());
+        _return.responseCode = ResponseCode::ScanEnded;
+        for (itr->Seek(startKey); itr->Valid(); itr->Next()) {
+            Record record;
+            record.key = itr->key().ToString();
+            record.value = itr->value().ToString();
+            if (!startKeyIncluded && startKey == record.key) {
+                continue;
+            }
+            if (!endKey.empty()) {
+                if (endKeyIncluded && endKey < record.key) {
+                  break;
+                }
+                if (!endKeyIncluded && endKey <= record.key) {
+                  break;
+                }
+            }
+            numBytes += record.key.size() + record.value.size();
+            _return.records.push_back(record);
+            if (_return.records.size() >= (uint32_t)maxRecords || numBytes >= maxBytes) {
+                _return.responseCode = ResponseCode::Success;
+                break;
+            }
+        }
+        assert(itr->status().ok());
+        delete itr;
     }
 
-    void scanDescending(RecordListResponse& _return, std::map<std::string, std::string>& map,
+    void scanDescending(RecordListResponse& _return, leveldb::DB* db,
               const std::string& startKey, const bool startKeyIncluded, 
               const std::string& endKey, const bool endKeyIncluded,
               const int32_t maxRecords, const int32_t maxBytes) {
+        int numBytes = 0;
+        leveldb::Iterator* itr = db->NewIterator(leveldb::ReadOptions());
         _return.responseCode = ResponseCode::ScanEnded;
+        if (endKey.empty()) {
+            itr->SeekToLast();
+        } else {
+            itr->Seek(endKey);
+        }
+        for (; itr->Valid(); itr->Prev()) {
+            Record record;
+            record.key = itr->key().ToString();
+            record.value = itr->value().ToString();
+            if (!endKeyIncluded && endKey == record.key) {
+                continue;
+            }
+            if (startKeyIncluded && startKey > record.key) {
+                break;
+            }
+            if (!startKeyIncluded && startKey >= record.key) {
+                break;
+            }
+            numBytes += record.key.size() + record.value.size();
+            _return.records.push_back(record);
+            if (_return.records.size() >= (uint32_t)maxRecords || numBytes >= maxBytes) {
+                _return.responseCode = ResponseCode::Success;
+                break;
+            }
+        }
+        assert(itr->status().ok());
+        delete itr;
     }
 
     void get(BinaryResponse& _return, const std::string& mapName, const std::string& key) {
@@ -205,7 +267,6 @@ public:
 	  std::string recordValue;
 	  leveldb::Status status = itr->second->Get(leveldb::ReadOptions(), key, &recordValue);
 	  if (status.ok()) {
-            printf("Record exists!\n");
             return ResponseCode::RecordExists;
 	  } else if (!status.IsNotFound()) {
             return ResponseCode::Error;
@@ -253,8 +314,9 @@ public:
             return ResponseCode::MapNotFound;
         }
         leveldb::WriteOptions options;
-        options.sync = false;
+        options.sync = true;
         leveldb::Status status = itr->second->Delete(options, key);
+        printf("status: %s %s %s\n", mapName.c_str(), key.c_str(), status.ToString().c_str());
         if (status.IsNotFound()) {
             return ResponseCode::RecordNotFound;
         } else if (!status.ok()) {
