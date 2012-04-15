@@ -18,6 +18,8 @@
 #include <boost/lexical_cast.hpp>
 #include "MySqlClient.h"
 
+using namespace std;
+
 MySqlClient::
 MySqlClient(const std::string& host, uint32_t port) :
     host_(host),
@@ -39,8 +41,10 @@ MySqlClient(const std::string& host, uint32_t port) :
         NULL,           // unix socket
         0               // flags
     ));
-    assert(0 == mysql_query(&mysql_, "create database if not exists mapkeeper"));
-    assert(0 == mysql_query(&mysql_, "use mapkeeper"));
+    string query = "create database if not exists mapkeeper";
+    assert(0 == mysql_real_query(&mysql_, query.c_str(), query.length()));
+    query = "use mapkeeper";
+    assert(0 == mysql_real_query(&mysql_, query.c_str(), query.length()));
 }
 
 MySqlClient::ResponseCode MySqlClient::
@@ -48,7 +52,7 @@ createTable(const std::string& tableName)
 {
     std::string query = "create table " + escapeString(tableName) + 
         "(record_key varbinary(512) primary key, record_value longblob not null) engine=innodb";
-    int result = mysql_query(&mysql_, query.c_str());
+    int result = mysql_real_query(&mysql_, query.c_str(), query.length());
     if (result != 0) {
         uint32_t error = mysql_errno(&mysql_);
         if (error == ER_TABLE_EXISTS_ERROR) {
@@ -65,7 +69,7 @@ MySqlClient::ResponseCode MySqlClient::
 dropTable(const std::string& tableName)
 {
     std::string query = "drop table " + escapeString(tableName);
-    int result = mysql_query(&mysql_, query.c_str());
+    int result = mysql_real_query(&mysql_, query.c_str(), query.length());
     if (result != 0) {
         uint32_t error = mysql_errno(&mysql_);
         if (error == ER_BAD_TABLE_ERROR) {
@@ -76,6 +80,26 @@ dropTable(const std::string& tableName)
         }
     }
     return Success;
+}
+
+void MySqlClient::
+listTables(vector<string>& tables) {
+    std::string query = "show tables";
+    int result = mysql_real_query(&mysql_, query.c_str(), query.length());
+    if (result != 0) {
+        uint32_t error = mysql_errno(&mysql_);
+        fprintf(stderr, "%d %s\n", error, mysql_error(&mysql_));
+        return;
+    }
+
+    MYSQL_RES* res = mysql_store_result(&mysql_);
+    MYSQL_ROW row;
+
+    while ((row = mysql_fetch_row(res))) {
+        uint64_t* lengths = mysql_fetch_lengths(res);
+        tables.push_back(std::string(row[0], lengths[0]));
+    }
+    mysql_free_result(res);
 }
 
 MySqlClient::ResponseCode MySqlClient::
@@ -116,7 +140,6 @@ update(const std::string& tableName, const std::string& key, const std::string& 
     }
     uint64_t numRows = mysql_affected_rows(&mysql_);
     if (numRows == 0) {
-        fprintf(stderr, "update %s affected %ld rows\n", query.c_str(), numRows);
         return RecordNotFound;
     } else if (numRows != 1) {
         fprintf(stderr, "update affected %ld rows\n", numRows);

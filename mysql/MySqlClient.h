@@ -13,12 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#ifndef MYSQLCLIENT_H
+#define MYSQLCLIENT_H
+
 #include <string>
+#include <vector>
 #include <mysql.h>
 #include "MapKeeper.h"
 
-#ifndef MYSQLCLIENT_H
-#define MYSQLCLIENT_H
+using namespace std;
 
 class MySqlClient {
 public:
@@ -35,6 +38,7 @@ public:
     MySqlClient(const std::string& host, uint32_t port);
     ResponseCode createTable(const std::string& tableName);
     ResponseCode dropTable(const std::string& tableName);
+    void listTables(vector<string>& tables);
     ResponseCode insert(const std::string& tableName, const std::string& key, const std::string& value);
     ResponseCode update(const std::string& tableName, const std::string& key, const std::string& value);
     ResponseCode get(const std::string& tableName, const std::string& key, std::string& value);

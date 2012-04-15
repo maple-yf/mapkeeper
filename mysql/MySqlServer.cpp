@@ -18,6 +18,7 @@
  * This is a implementation of the mapkeeper interface that uses 
  * mysql.
  */
+#include <arpa/inet.h>
 #include <cstdio>
 #include "MapKeeper.h"
 #include <boost/thread/tss.hpp>
@@ -73,6 +74,7 @@ public:
     }
 
     void listMaps(StringListResponse& _return) {
+        mysql_->listTables(_return.values);
         _return.responseCode = ResponseCode::Success;
     }
 
