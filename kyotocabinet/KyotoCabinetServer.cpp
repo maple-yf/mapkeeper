@@ -59,11 +59,23 @@ public:
         // open all the existing databases
         boost::unique_lock< boost::shared_mutex > writeLock(mutex_);;
         directory_iterator end_itr;
-        for (directory_iterator itr(directoryName); itr != end_itr;itr++) {
-            if (is_directory(itr->status())) {
+        for (directory_iterator itr(directoryName); itr != end_itr; itr++) {
+            if (is_regular_file(itr->status())) {
                 std::string mapName = itr->path().leaf().string();
+                std::string fileName = itr->path().string();
+
+                // skip hidden files
+                if (mapName[0] == '.') {
+                  continue;
+                }
+
                 TreeDB* db = new TreeDB();
+                if (!db->open(fileName, BasicDB::OWRITER)) {
+                    printf("ERROR: failed to open '%s'\n", fileName.c_str());
+                    exit(1);
+                }
                 maps_.insert(mapName, db);
+                printf("INFO: opened '%s'\n", fileName.c_str());
             }
         }
     }
@@ -88,6 +100,17 @@ public:
     }
 
     ResponseCode::type dropMap(const std::string& mapName) {
+        boost::unique_lock< boost::shared_mutex> writeLock(mutex_);;
+        boost::ptr_map<std::string, TreeDB>::iterator itr = maps_.find(mapName);
+        if (itr == maps_.end()) {
+            return ResponseCode::MapNotFound;
+        }
+        if (!itr->second->close()) {
+          return ResponseCode::Error;
+        }
+        maps_.erase(itr);
+        // TODO error check. portable code.
+        unlink((directoryName_ + "/" + mapName).c_str());
         return ResponseCode::Success;
     }
 
@@ -191,6 +214,9 @@ public:
         boost::ptr_map<std::string, TreeDB>::iterator itr = maps_.find(mapName);
         if (itr == maps_.end()) {
             return ResponseCode::MapNotFound;
+        }
+        if (!itr->second->remove(key)) {
+            return ResponseCode::RecordNotFound;
         }
         return ResponseCode::Success;
     }
