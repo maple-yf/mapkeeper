@@ -66,7 +66,7 @@ public:
 
                 // skip hidden files
                 if (mapName[0] == '.') {
-                  continue;
+                    continue;
                 }
 
                 TreeDB* db = new TreeDB();
@@ -115,17 +115,12 @@ public:
     }
 
     void listMaps(StringListResponse& _return) {
-        DIR *dp;
-        struct dirent *dirp;
-        if((dp  = opendir(directoryName_.c_str())) == NULL) {
-            _return.responseCode = ResponseCode::Success;
-            return;
+        boost::unique_lock< boost::shared_mutex> writeLock(mutex_);;
+        _return.values.clear();
+        boost::ptr_map<std::string, TreeDB>::iterator itr;
+        for (itr = maps_.begin(); itr != maps_.end(); itr++) {
+            _return.values.push_back(itr->first);
         }
-
-        while ((dirp = readdir(dp)) != NULL) {
-            _return.values.push_back(std::string(dirp->d_name));
-        }
-        closedir(dp);
         _return.responseCode = ResponseCode::Success;
     }
 
@@ -252,7 +247,7 @@ int main(int argc, char **argv) {
     shared_ptr<TServerTransport> serverTransport(new TServerSocket(port));
     shared_ptr<TTransportFactory> transportFactory(new TFramedTransportFactory());
     shared_ptr<TProtocolFactory> protocolFactory(new TBinaryProtocolFactory());
-    TThreadedServer server (processor, serverTransport, transportFactory, protocolFactory);
+    TThreadedServer server(processor, serverTransport, transportFactory, protocolFactory);
     server.serve();
     return 0;
 }

@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <algorithm>
 #include <arpa/inet.h>
 #include <boost/lexical_cast.hpp>
 #include <cassert>
@@ -22,6 +23,7 @@
 #include <transport/TSocket.h>
 #include <transport/TBufferTransports.h>
 
+using namespace std;
 using namespace ::apache::thrift;
 using namespace ::apache::thrift::protocol;
 using namespace ::apache::thrift::transport;
@@ -32,21 +34,21 @@ using namespace mapkeeper;
 
 void testScan(mapkeeper::MapKeeperClient& client) {
     mapkeeper::RecordListResponse scanResponse;
-    std::string mapName("scan_test");
+    string mapName("scan_test");
     assert(mapkeeper::ResponseCode::Success == client.addMap("scan_test"));
     for (int i = 0; i < 10; i++) {
-        std::string key = "key" + boost::lexical_cast<std::string>(i);
-        std::string val = "val" + boost::lexical_cast<std::string>(i);
+        string key = "key" + boost::lexical_cast<string>(i);
+        string val = "val" + boost::lexical_cast<string>(i);
         assert(mapkeeper::ResponseCode::Success == client.insert(mapName, key, val));
     }
 
     client.scan(scanResponse, mapName, ScanOrder::Ascending, "", true, "", true, 1000, 1000);
     assert(scanResponse.responseCode == mapkeeper::ResponseCode::ScanEnded);
     assert(scanResponse.records.size() == 10);
-    std::vector<mapkeeper::Record>::iterator itr = scanResponse.records.begin();
+    vector<mapkeeper::Record>::iterator itr = scanResponse.records.begin();
     for (int i = 0; i < 10; i++) {
-        std::string key = "key" + boost::lexical_cast<std::string>(i);
-        std::string val = "val" + boost::lexical_cast<std::string>(i);
+        string key = "key" + boost::lexical_cast<string>(i);
+        string val = "val" + boost::lexical_cast<string>(i);
         assert(key == itr->key);
         assert(val == itr->value);
         itr++;
@@ -58,8 +60,8 @@ void testScan(mapkeeper::MapKeeperClient& client) {
     assert(scanResponse.records.size() == 6);
     itr = scanResponse.records.begin();
     for (int i = 0; i < 6; i++) {
-        std::string key = "key" + boost::lexical_cast<std::string>(i);
-        std::string val = "val" + boost::lexical_cast<std::string>(i);
+        string key = "key" + boost::lexical_cast<string>(i);
+        string val = "val" + boost::lexical_cast<string>(i);
         assert(key == itr->key);
         assert(val == itr->value);
         itr++;
@@ -71,8 +73,8 @@ void testScan(mapkeeper::MapKeeperClient& client) {
     assert(scanResponse.records.size() == 5);
     itr = scanResponse.records.begin();
     for (int i = 2; i < 7; i++) {
-        std::string key = "key" + boost::lexical_cast<std::string>(i);
-        std::string val = "val" + boost::lexical_cast<std::string>(i);
+        string key = "key" + boost::lexical_cast<string>(i);
+        string val = "val" + boost::lexical_cast<string>(i);
         assert(key == itr->key);
         assert(val == itr->value);
         itr++;
@@ -84,8 +86,8 @@ void testScan(mapkeeper::MapKeeperClient& client) {
     assert(scanResponse.records.size() == 6);
     itr = scanResponse.records.begin();
     for (int i = 9; i > 3; i--) {
-        std::string key = "key" + boost::lexical_cast<std::string>(i);
-        std::string val = "val" + boost::lexical_cast<std::string>(i);
+        string key = "key" + boost::lexical_cast<string>(i);
+        string val = "val" + boost::lexical_cast<string>(i);
         assert(key == itr->key);
         assert(val == itr->value);
         itr++;
@@ -98,8 +100,8 @@ void testScan(mapkeeper::MapKeeperClient& client) {
     assert(scanResponse.records.size() == 3);
     itr = scanResponse.records.begin();
     for (int i = 4; i < 7; i++) {
-        std::string key = "key" + boost::lexical_cast<std::string>(i);
-        std::string val = "val" + boost::lexical_cast<std::string>(i);
+        string key = "key" + boost::lexical_cast<string>(i);
+        string val = "val" + boost::lexical_cast<string>(i);
         assert(key == itr->key);
         assert(val == itr->value);
         itr++;
@@ -112,8 +114,8 @@ void testScan(mapkeeper::MapKeeperClient& client) {
     assert(scanResponse.records.size() == 2);
     itr = scanResponse.records.begin();
     for (int i = 8; i > 6; i--) {
-        std::string key = "key" + boost::lexical_cast<std::string>(i);
-        std::string val = "val" + boost::lexical_cast<std::string>(i);
+        string key = "key" + boost::lexical_cast<string>(i);
+        string val = "val" + boost::lexical_cast<string>(i);
         assert(key == itr->key);
         assert(val == itr->value);
         itr++;
@@ -130,6 +132,7 @@ int main(int argc, char **argv) {
     boost::shared_ptr<TProtocol> protocol(new TBinaryProtocol(transport));
     mapkeeper::MapKeeperClient client(protocol);
     mapkeeper::BinaryResponse getResponse;
+    mapkeeper::StringListResponse listResponse;
 
     // these methods can throw apache::thrift::TException.
     transport->open();
@@ -140,6 +143,7 @@ int main(int argc, char **argv) {
     // test addMap
     assert(mapkeeper::ResponseCode::Success == client.addMap("db1"));
     assert(mapkeeper::ResponseCode::MapExists == client.addMap("db1"));
+    assert(mapkeeper::ResponseCode::Success == client.addMap("db3"));
 
     // test insert
     assert(mapkeeper::ResponseCode::Success == client.insert("db1", "k1", "v1"));
@@ -172,9 +176,24 @@ int main(int argc, char **argv) {
     assert(mapkeeper::ResponseCode::RecordNotFound== client.remove("db1", "k2"));
     assert(mapkeeper::ResponseCode::MapNotFound == client.remove("db2", "k1"));
 
-    // test dropMap
+    // test listMaps and dropMap
+    client.listMaps(listResponse);
+    assert(listResponse.responseCode == mapkeeper::ResponseCode::Success);
+    assert(listResponse.values.size() == 2);
+    assert(find(listResponse.values.begin(), listResponse.values.end(), "db1") != listResponse.values.end());
+    assert(find(listResponse.values.begin(), listResponse.values.end(), "db3") != listResponse.values.end());
+
     assert(mapkeeper::ResponseCode::Success == client.dropMap("db1"));
     assert(mapkeeper::ResponseCode::MapNotFound == client.dropMap("db1"));
+    client.listMaps(listResponse);
+    assert(listResponse.responseCode == mapkeeper::ResponseCode::Success);
+    assert(listResponse.values.size() == 1);
+    assert(find(listResponse.values.begin(), listResponse.values.end(), "db3") != listResponse.values.end());
+
+    assert(mapkeeper::ResponseCode::Success == client.dropMap("db3"));
+    client.listMaps(listResponse);
+    assert(listResponse.responseCode == mapkeeper::ResponseCode::Success);
+    assert(listResponse.values.size() == 0);
     transport->close();
     return 0;
 }
