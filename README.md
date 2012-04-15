@@ -84,3 +84,11 @@ of different key-value stores.
 https://github.com/brianfrankcooper/YCSB
 
 [Apache 2.0 License](https://github.com/brianfrankcooper/YCSB/blob/master/LICENSE.txt)
+
+### Kyoto Cabinet
+
+Kyoto Cabinet is a key-value store library.
+
+http://fallabs.com/kyotocabinet
+
+[Kyoto Cabinet License](http://fallabs.com/kyotocabinet/spex-en#license)
