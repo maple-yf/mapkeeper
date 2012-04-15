@@ -36,6 +36,15 @@ void testScan(mapkeeper::MapKeeperClient& client) {
     mapkeeper::RecordListResponse scanResponse;
     string mapName("scan_test");
     assert(mapkeeper::ResponseCode::Success == client.addMap("scan_test"));
+
+    // test scanning empty map
+    client.scan(scanResponse, mapName, ScanOrder::Ascending, "", true, "", true, 1000, 1000);
+    assert(scanResponse.responseCode == mapkeeper::ResponseCode::ScanEnded);
+    assert(scanResponse.records.size() == 0);
+    client.scan(scanResponse, mapName, ScanOrder::Descending, "", true, "", true, 1000, 1000);
+    assert(scanResponse.responseCode == mapkeeper::ResponseCode::ScanEnded);
+    assert(scanResponse.records.size() == 0);
+
     for (int i = 0; i < 10; i++) {
         string key = "key" + boost::lexical_cast<string>(i);
         string val = "val" + boost::lexical_cast<string>(i);

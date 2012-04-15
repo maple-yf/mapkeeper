@@ -43,6 +43,7 @@ using namespace ::apache::thrift::transport;
 using namespace ::apache::thrift::server;
 using namespace ::apache::thrift::concurrency;
 
+using namespace std;
 using namespace kyotocabinet;
 using boost::shared_ptr;
 using namespace boost::filesystem;
@@ -128,20 +129,100 @@ public:
               const std::string& startKey, const bool startKeyIncluded, 
               const std::string& endKey, const bool endKeyIncluded,
               const int32_t maxRecords, const int32_t maxBytes) {
+        boost::shared_lock< boost::shared_mutex> readLock(mutex_);;
+        boost::ptr_map<std::string, TreeDB>::iterator itr = maps_.find(mapName);
+        if (itr == maps_.end()) {
+            _return.responseCode = ResponseCode::MapNotFound;
+            return;
+        }
+        if (order == ScanOrder::Ascending) {
+            scanAscending(_return, itr->second, startKey, startKeyIncluded, endKey, endKeyIncluded, maxRecords, maxBytes);
+        } else {
+            scanDescending(_return, itr->second, startKey, startKeyIncluded, endKey, endKeyIncluded, maxRecords, maxBytes);
+        }
+ 
     }
 
-    void scanAscending(RecordListResponse& _return, std::map<std::string, std::string>& map,
+    void scanAscending(RecordListResponse& _return, TreeDB* db,  
               const std::string& startKey, const bool startKeyIncluded, 
               const std::string& endKey, const bool endKeyIncluded,
               const int32_t maxRecords, const int32_t maxBytes) {
+        int numBytes = 0;
+        DB::Cursor* cursor = db->cursor();
         _return.responseCode = ResponseCode::ScanEnded;
+        if (!cursor->jump(startKey)) {
+          delete cursor;
+          return;
+        }
+        string key, value;
+        while (cursor->get(&key, &value, true /* step */)) {
+            if (!startKeyIncluded && key == startKey) {
+                continue;
+            }
+            if (!endKey.empty()) {
+                if (endKeyIncluded && endKey < key) {
+                  break;
+                }
+                if (!endKeyIncluded && endKey <= key) {
+                  break;
+                }
+            }
+            Record record;
+            record.key = key;
+            record.value = value;
+            numBytes += record.key.size() + record.value.size();
+            _return.records.push_back(record);
+            if (_return.records.size() >= (uint32_t)maxRecords || numBytes >= maxBytes) {
+                _return.responseCode = ResponseCode::Success;
+                break;
+            }
+        }
+        delete cursor;
     }
 
-    void scanDescending(RecordListResponse& _return, std::map<std::string, std::string>& map,
+    void scanDescending(RecordListResponse& _return, TreeDB* db,
               const std::string& startKey, const bool startKeyIncluded, 
               const std::string& endKey, const bool endKeyIncluded,
               const int32_t maxRecords, const int32_t maxBytes) {
+        int numBytes = 0;
+        DB::Cursor* cursor = db->cursor();
         _return.responseCode = ResponseCode::ScanEnded;
+
+        if (endKey.empty()) {
+            if (!cursor->jump_back()) {
+                delete cursor;
+                return;
+            }
+        } else {
+            if (!cursor->jump_back(endKey)) {
+                delete cursor;
+                return;
+            }
+        }
+        string key, value;
+        while (cursor->get(&key, &value, false /* step */)) {
+            if (!endKeyIncluded && key == endKey) {
+                cursor->step_back();
+                continue;
+            }
+            if (startKeyIncluded && startKey > key) {
+                break;
+            }
+            if (!startKeyIncluded && startKey >= key) {
+                break;
+            }
+            Record record;
+            record.key = key;
+            record.value = value;
+            numBytes += record.key.size() + record.value.size();
+            _return.records.push_back(record);
+            if (_return.records.size() >= (uint32_t)maxRecords || numBytes >= maxBytes) {
+                _return.responseCode = ResponseCode::Success;
+                break;
+            }
+            cursor->step_back();
+        }
+        delete cursor;
     }
 
     void get(BinaryResponse& _return, const std::string& mapName, const std::string& key) {
