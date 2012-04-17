@@ -23,8 +23,6 @@ command.
  
 ## Configuration Parameters
 
-There are many tunable parameters that affects LevelDB performance.. 
-
 ### `--sync | -s`
 
 By default, databases are opened in "transaction" mode, which means writes are 
