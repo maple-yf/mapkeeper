@@ -77,7 +77,7 @@ public:
                 if (sync_) {
                     flags |= BasicDB::OAUTOSYNC;
                 }
-                if (!db->open(fileName, BasicDB::OWRITER)) {
+                if (!db->open(fileName, flags)) {
                     printf("ERROR: failed to open '%s'\n", fileName.c_str());
                     exit(1);
                 }
@@ -104,7 +104,7 @@ public:
         if (sync_) {
             flags |= BasicDB::OAUTOSYNC;
         }
-        if (!db->open(directoryName_ + "/" + mapName,  BasicDB::OWRITER | BasicDB::OCREATE)) {
+        if (!db->open(directoryName_ + "/" + mapName,  flags)) {
             return ResponseCode::Error;
         }
         std::string mapName_ = mapName;
