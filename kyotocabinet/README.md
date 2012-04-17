@@ -10,9 +10,33 @@
 
 ## Running Kyoto Cabinet MapKeeper Server
 
-To start the server, execute the command:
+After installing all the dependencies, run:
 
-    make run
+    make
+
+to compile. To start the server, execute the command:
+
+    ./mapkeeper_kyotocabinet
+
+You can see the complete list of available options by passing `-h` to `mapkeeper_kyotocabinet` 
+command.
+ 
+## Configuration Parameters
+
+There are many tunable parameters that affects LevelDB performance.. 
+
+### `--sync | -s`
+
+By default, databases are opened in "transaction" mode, which means writes are 
+pushed to the OS, but it doesn't wait for writes to get persisted to disk. Use
+this flag to turn on synchronous write.
+
+See <http://fallabs.com/kyotocabinet/spex.html> for details on different
+durability guarantees Kyoto Cabinet provides. 
+
+### `--mmap-size-mb | -m`
+
+Sets the size of the internal memory-mapped region in MB. 
 
 ## Related Pages
 
