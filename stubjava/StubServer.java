@@ -86,7 +86,7 @@ class StubServer implements MapKeeper.Iface {
     }
 
     public static void usage() {
-        System.err.println("Usage: java -jar stub_server.jar [hsha|nonblocking|threadpool]");
+        System.err.println("Usage: java -jar stub_server.jar [hsha|nonblocking|threadpool|selector]");
         System.exit(1);
     }
 
@@ -116,12 +116,21 @@ class StubServer implements MapKeeper.Iface {
                 args.processor(new MapKeeper.Processor(mapkeeper));
                 server = new TNonblockingServer(args);
             } else if (argv[0].equals("threadpool")) {
-                TNonblockingServerTransport trans = new TNonblockingServerSocket(port);
+                TServerTransport trans = new TServerSocket(port);
                 TThreadPoolServer.Args args = new TThreadPoolServer.Args(trans);
                 args.transportFactory(new TFramedTransport.Factory());
                 args.protocolFactory(new TBinaryProtocol.Factory());
                 args.processor(new MapKeeper.Processor(mapkeeper));
                 server = new TThreadPoolServer(args);
+            } else if (argv[0].equals("selector")) {
+                TNonblockingServerTransport trans = new TNonblockingServerSocket(port);
+                TThreadedSelectorServer.Args args = new TThreadedSelectorServer.Args(trans);
+                args.transportFactory(new TFramedTransport.Factory());
+                args.protocolFactory(new TBinaryProtocol.Factory());
+                args.processor(new MapKeeper.Processor(mapkeeper));
+                args.selectorThreads(4);
+                args.workerThreads(numThreads);
+                server = new TThreadedSelectorServer(args);
             } else {
                 usage();
             }

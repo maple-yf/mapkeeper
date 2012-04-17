@@ -2,6 +2,7 @@
 # $ make run mode=hsha          # run THsHaServer
 # $ make run mode=nonblocking   # run TNonblockingServer
 # $ make run mode=threadpool    # run TThreadPoolServer
+# $ make run mode=selector      # run TThreadedSelectorServer
 #
 all : 
 	javac -cp "../lib/*:./*:../lib/mapkeeper.jar" *.java
