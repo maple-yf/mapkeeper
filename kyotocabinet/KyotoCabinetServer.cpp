@@ -54,8 +54,9 @@ using namespace mapkeeper;
 
 class KyotoCabinetServer: virtual public MapKeeperIf {
 public:
-    KyotoCabinetServer(const std::string& directoryName) :
-        directoryName_(directoryName) {
+    KyotoCabinetServer(const std::string& directoryName, int64_t mmapSizeMb) :
+        directoryName_(directoryName),
+        mmapSizeMb_(mmapSizeMb) {
 
         // open all the existing databases
         boost::unique_lock< boost::shared_mutex > writeLock(mutex_);;
@@ -71,6 +72,8 @@ public:
                 }
 
                 TreeDB* db = new TreeDB();
+                db->tune_map(mmapSizeMb_ << 20);
+
                 if (!db->open(fileName, BasicDB::OWRITER)) {
                     printf("ERROR: failed to open '%s'\n", fileName.c_str());
                     exit(1);
@@ -92,6 +95,7 @@ public:
             return ResponseCode::MapExists;
         }
         TreeDB* db = new TreeDB();
+        db->tune_map(mmapSizeMb_ << 20);
         if (!db->open(directoryName_ + "/" + mapName,  BasicDB::OWRITER | BasicDB::OCREATE)) {
           return ResponseCode::Error;
         }
@@ -299,18 +303,21 @@ public:
 
 private:
     std::string directoryName_; // directory to store db files.
+    int64_t mmapSizeMb_; // used for DB->tune_map
     boost::ptr_map<std::string, TreeDB> maps_;
     boost::shared_mutex mutex_; // protect map_
 };
 
 int main(int argc, char **argv) {
     int port;
+    int mmapSizeMb;
     std::string dir;
     po::variables_map vm;
     po::options_description config("");
     config.add_options()
         ("help,h", "produce help message")
         ("sync,s", "synchronous writes")
+        ("mmap-size-mb,m", po::value<int>(&mmapSizeMb)->default_value(64), "size of the memory-mapped region in MB")
         ("port,p", po::value<int>(&port)->default_value(9090), "port to listen to")
         ("datadir,d", po::value<std::string>(&dir)->default_value("data"), "data directory")
         ;
@@ -323,7 +330,7 @@ int main(int argc, char **argv) {
         exit(0);
     }
     syncmode = vm.count("sync");
-    shared_ptr<KyotoCabinetServer> handler(new KyotoCabinetServer(dir));
+    shared_ptr<KyotoCabinetServer> handler(new KyotoCabinetServer(dir, mmapSizeMb));
     shared_ptr<TProcessor> processor(new MapKeeperProcessor(handler));
     shared_ptr<TServerTransport> serverTransport(new TServerSocket(port));
     shared_ptr<TTransportFactory> transportFactory(new TFramedTransportFactory());
