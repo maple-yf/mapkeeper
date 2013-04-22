@@ -92,3 +92,11 @@ Kyoto Cabinet is a key-value store library.
 http://fallabs.com/kyotocabinet
 
 [Kyoto Cabinet License](http://fallabs.com/kyotocabinet/spex-en#license)
+
+### OpenLDAP LMDB
+
+OpenLDAP LMDB is a B-tree based memory-mapped transactional key-value store.
+
+http://symas.com/mdb/
+
+[OpenLDAP License](http://www.openldap.org/software/release/license.html)
